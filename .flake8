@@ -1,0 +1,7 @@
+[flake8]
+max-complexity = 18
+max-line-length = 120
+extend-ignore = E501,E203,W503,C901,F401,F841, W291
+exclude = .tox/ build/ dist/
+select = B,C,E,F,W,T4,B9
+show_source = True

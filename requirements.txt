@@ -1,0 +1,7 @@
+flask_appbuilder==3.3.0
+jwcrypto==0.6
+kubernetes==17.17.0
+apache-airflow==2.1.0
+alembic==1.6.5
+Flask-Login>=0.3
+Flask==1.1.4
