@@ -1,0 +1,38 @@
+##### Labeler ##########################################################################################################
+labelPRBasedOnFilePath:
+  area/security:
+    - sec_manager/security.py
+    - sec_manager/user_backend.py
+  area/pod_cleaner:
+    - sec_manager/migration_spinner.py
+    - sec_manager/pods_cleaner.py
+
+  documentation:
+    - docs/*
+    - docs/**/*
+
+  internal:
+    - .github/*
+    - .github/**/*
+    - .chglog/*
+    - .flake8
+    - .gitignore
+    - .pre-commit-config.yaml
+    - Makefile
+
+  dependencies:
+    - pyproject.toml
+    - poetry.lock
+
+  tests:
+    - tests/*
+
+##### Greetings ########################################################################################################
+firstPRWelcomeComment: >
+  Thanks a lot for your first contribution! Please check out our contributing guidelines and don't hesitate to ask whatever you need.
+
+firstPRMergeComment: >
+  Awesome work, congrats on your first merged pull request and thank you for helping improve everyone's experience!
+
+firstIssueWelcomeComment: >
+  Thanks for opening your first issue here! We'll come back to you as soon as we can.

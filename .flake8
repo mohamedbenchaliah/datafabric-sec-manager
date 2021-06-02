@@ -1,7 +1,12 @@
 [flake8]
-max-complexity = 18
+exclude = docs, .eggs, setup.py, example, .aws-sam, .git, dist, *.md, *.yaml, example/samconfig.toml, *.txt, *.ini
+ignore = E203, E266, W503, BLK100, W291, I004, VNE001
 max-line-length = 120
-extend-ignore = E501,E203,W503,C901,F401,F841, W291
-exclude = .tox/ build/ dist/
-select = B,C,E,F,W,T4,B9
-show_source = True
+max-complexity = 15
+
+[isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 120

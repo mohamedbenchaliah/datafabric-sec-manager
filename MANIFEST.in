@@ -1,8 +1,4 @@
-include README.md requirements.txt
-exclude .*
-exclude *.egg-info
-exclude test/data*
-exclude dist*
-exclude doc*
-exclude htmlcov*
-exclude test*
+include README.md
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

@@ -9,10 +9,10 @@ from flask_login import current_user, login_user
 from jwcrypto import jwk, jws, jwt
 
 try:
-    from airflow.www_rbac.security import AirflowSecurityManager, EXISTING_ROLES
+    from airflow.www_rbac.security import EXISTING_ROLES, AirflowSecurityManager
 except ImportError:
     try:
-        from airflow.www.security import AirflowSecurityManager, EXISTING_ROLES
+        from airflow.www.security import EXISTING_ROLES, AirflowSecurityManager
     except ImportError:
         # Airflow not installed, likely we are running setup.py to _install_ things
         class AirflowSecurityManager(object):
@@ -26,7 +26,7 @@ _logger: logging.Logger = logging.getLogger(__name__)
 
 
 class SecurityManagerMixin(object):
-    """Flask Class to auto-creates users based 
+    """Flask Class to auto-creates users based
     on the signed JWT token from the Datafabric platform.
     """
 

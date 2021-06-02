@@ -1,29 +1,30 @@
 import os
 import time
 import uuid
-import pytest
-import flask_appbuilder
 
+import flask_appbuilder
+import pytest
 from flask_appbuilder import SQLA
 from jwcrypto import jwk, jwt
 from sqlalchemy import event
 
-from src.datafabric import user_backend
-from src.datafabric.security import SecurityManagerMixin
+from sec_manager import user_backend
+from sec_manager.security import SecurityManagerMixin
 
-AUDIENCE = 'airflow.example.com'
-os.environ['AIRFLOW__CORE__UNIT_TEST_MODE'] = 'True'
+AUDIENCE = "airflow.example.com"
+os.environ["AIRFLOW__CORE__UNIT_TEST_MODE"] = "True"
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def app():
     from flask import Flask
+
     app = Flask(__name__)
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    app.config['SQLALCHEMY_RECORD_QUERIES'] = True
-    app.config['SECRET_KEY'] = 'thisismyscretkey'
-    app.config['TESTING'] = True
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.config["SQLALCHEMY_RECORD_QUERIES"] = True
+    app.config["SECRET_KEY"] = "thisismyscretkey"
+    app.config["TESTING"] = True
 
     app.api_auth = user_backend
     app.api_auth.init_app(app)
@@ -32,28 +33,29 @@ def app():
     @user_backend.requires_authentication
     def home():
         return "Hello"
+
     return app
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def db(app, sm_class):
     print("New db")
     return SQLA(app)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def appbuilder(app, db, sm_class):
     from flask_appbuilder import AppBuilder
     from flask_appbuilder.forms import FieldConverter
 
     # Un-monkey patch airflow
     FieldConverter.conversion_table = (
-        (fn, field, widget) for fn, field, widget in FieldConverter.conversion_table if fn != 'is_utcdatetime'
+        (fn, field, widget) for fn, field, widget in FieldConverter.conversion_table if fn != "is_utcdatetime"
     )
 
     appbuilder = AppBuilder(app, db.session, security_manager_class=sm_class)
 
-    for r in ('Admin', 'Op', 'User', 'Viewer'):
+    for r in ("Admin", "Op", "User", "Viewer"):
         appbuilder.sm.add_role(r)
 
     """
@@ -94,7 +96,7 @@ def run_in_transaction(appbuilder, db, request):
     txn = appbuilder.session.begin_nested()
     txn2 = appbuilder.session.begin_nested()  # noqa
 
-    @event.listens_for(db.engine, 'commit')
+    @event.listens_for(db.engine, "commit")
     def commit(conn):
         # We don't mind if the nested transaction is "commited" (i.e. the savepoint
         # has been released) so long as we never issue a COMMIT instruction
@@ -105,7 +107,7 @@ def run_in_transaction(appbuilder, db, request):
     pass
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def sm_class(jwt_signing_key, allowed_audience):
     class SM(SecurityManagerMixin, flask_appbuilder.security.sqla.manager.SecurityManager):
         def count_users(self):
@@ -116,15 +118,15 @@ def sm_class(jwt_signing_key, allowed_audience):
     return lambda appbuilder: SM(appbuilder, jwt_signing_key, allowed_audience)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def jwt_signing_key():
-    return jwk.JWK(generate='oct', size=256)
+    return jwk.JWK(generate="oct", size=256)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def jwt_signing_keypair():
     # Create a small key for quicker tests
-    return jwk.JWK.generate(kty='RSA', size=512)
+    return jwk.JWK.generate(kty="RSA", size=512)
 
 
 @pytest.fixture
@@ -132,7 +134,7 @@ def jwt_signing_cert(tmp_path, jwt_signing_keypair):
     """
     Write the certificate to a PEM file in a per-test temp directory
     """
-    pem = tmp_path / 'tls.crt'
+    pem = tmp_path / "tls.crt"
     pem.write_bytes(jwt_signing_keypair.export_to_pem())
     return str(pem)
 
@@ -140,10 +142,10 @@ def jwt_signing_cert(tmp_path, jwt_signing_keypair):
 @pytest.fixture
 def user(appbuilder, valid_claims, role):
     username = str(uuid.uuid4())
-    email = 'airflower@domain.com'
+    email = "airflower@domain.com"
 
     txn2 = appbuilder.session.begin_nested()
-    if not appbuilder.sm.add_user(username, 'Lucy', 'Airflower', email, role('Admin')):
+    if not appbuilder.sm.add_user(username, "Lucy", "Airflower", email, role("Admin")):
         raise RuntimeError("Error creating test user")
     if txn2.is_active:
         # add_user calls commit(), but lets be safe and ensure it does
@@ -167,14 +169,14 @@ def role(appbuilder):
     return role_factory
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def allowed_audience():
     return AUDIENCE
 
 
 @pytest.fixture
 def invalid_jwt():
-    ephemeral_key = jwk.JWK(generate='oct', size=64)
+    ephemeral_key = jwk.JWK(generate="oct", size=64)
     token = jwt.JWT(header={"alg": "HS256"}, claims={"info": "I'm a signed token"})
     token.make_signed_token(ephemeral_key)
     return token.serialize()
@@ -186,6 +188,7 @@ def signed_jwt(jwt_signing_key):
         token = jwt.JWT(header={"alg": "HS256"}, claims=claims)
         token.make_signed_token(jwt_signing_key)
         return token.serialize()
+
     return jwt_factory
 
 
@@ -193,17 +196,17 @@ def signed_jwt(jwt_signing_key):
 def valid_claims(request):
 
     return {
-        'email': 'airflow@datafabric.com',
-        'roles': ['Op'],
-        'sub': str(uuid.uuid4()),
-        'full_name': 'Air flower',
-        'aud': AUDIENCE,
-        'nbf': int(time.time()),
-        'exp': int(time.time()) + 60,
+        "email": "airflow@datafabric.com",
+        "roles": ["Op"],
+        "sub": str(uuid.uuid4()),
+        "full_name": "Air flower",
+        "aud": AUDIENCE,
+        "nbf": int(time.time()),
+        "exp": int(time.time()) + 60,
     }
 
 
 @pytest.fixture
 def airflow_config(jwt_signing_cert, monkeypatch, allowed_audience):
-    monkeypatch.setitem(os.environ, 'AIRFLOW__DATAFABRIC__JWT_SIGNING_CERT', jwt_signing_cert)
-    monkeypatch.setitem(os.environ, 'AIRFLOW__DATAFABRIC__JWT_AUDIENCE', allowed_audience)
+    monkeypatch.setitem(os.environ, "AIRFLOW__DATAFABRIC__JWT_SIGNING_CERT", jwt_signing_cert)
+    monkeypatch.setitem(os.environ, "AIRFLOW__DATAFABRIC__JWT_AUDIENCE", allowed_audience)

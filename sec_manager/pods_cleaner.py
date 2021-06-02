@@ -4,7 +4,6 @@ import logging
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
-
 POD_SUCCEEDED = "succeeded"
 POD_FAILED = "failed"
 POD_REASON_EVICTED = "evicted"

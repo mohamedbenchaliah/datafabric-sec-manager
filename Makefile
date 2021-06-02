@@ -1,55 +1,45 @@
-# =======
-# General
-# =======
-# - `make tests` runs all the unit-tests using tox and pytest
-# - `make build` creates environment, runs tests, and builds the package
-# - `make clean` deletes all the build artifacts
+.PHONY: target dev format lint test coverage-html pr build
+.PHONY: security-baseline complexity-baseline release-prod release-test release clean
 
-tests: env test fmt clean
-.phony: tests
+target:
+	@$(MAKE) pr
 
-build: env package
-.phony: build
+dev:
+	pip install --upgrade pip pre-commit poetry==1.1.4
+	poetry install --extras "pydantic"
+	pre-commit install
 
+format:
+	poetry run isort sec_manager tests
+	poetry run black sec_manager tests
 
-# ---------------------  build env --------------------#
-
-env:
-	pip install --upgrade pip
-	pip install -r requirements-dev.txt
-	pip install -r requirements.txt
-	pip install -e .
-.PHONY: env
-
-# ---------------------  run tests --------------------#
+lint: format
+	poetry run flake8 sec_manager/* tests/*
 
 test:
-	@tox --recreate -e test --develop
-.PHONY: test
+	poetry run pytest -m "not perf" --cov=sec_manager --cov-report=xml
 
-fmt:
-	@tox -e fmt --develop
-.PHONY: fmt
+coverage-html:
+	poetry run pytest -m "not perf" --cov=sec_manager --cov-report=html
 
-# ----------------  Build the package  ----------------#
+pre-commit:
+	pre-commit run --show-diff-on-failure
 
-package:
-	# build the wheel
-	rm -rf *.egg-info build
-	python3 setup.py bdist_wheel
-	#python3 setup.py sdist
-	# Creation a zip with all packages
-#	pip install -r requirements.txt -t ./build
-#	mkdir ./build/sec-manager/
-#	find . -name '__pycache__' -exec rm -fr {} +
-#	cp ./src/* ./build/sec-manager && rm -rf ./build/lib && rm -rf ./build/bdist.macosx-*
-#	$(eval VERSION = $(shell python -c 'from src.__version__ import __version__; print(__version__)'))
-#	cd ./build/ && zip -r ../dist/dapspark-$(VERSION)-packages.zip .
-.PHONY: package
+pr: lint test security-baseline complexity-baseline
+#pr: lint pre-commit test security-baseline complexity-baseline
 
-# ----------------  Clean the project and Dev Env ----------------#
+build: pr
+	poetry build
 
-TO_CLEAN  = build pip-wheel-metadata/
+security-baseline:
+	poetry run bandit --baseline bandit.baseline -r sec_manager
+
+complexity-baseline:
+	$(info Maintenability index)
+	poetry run radon mi sec_manager
+	$(info Cyclomatic complexity index)
+	poetry run xenon --max-absolute C --max-modules A --max-average A sec_manager
+
 
 clean:
 	rm -rf ${TO_CLEAN}
@@ -57,7 +47,6 @@ clean:
 	find . -name '*.pyc' -exec rm -f {} +
 	find . -name '*.pyo' -exec rm -f {} +
 	find . -name '*~' -exec rm -f {} +
-	find . -name '*.xml' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -fr {} +
 	rm -rf Pipfile.lock \
 		   ~/.cache/pip \
@@ -65,7 +54,25 @@ clean:
 		   .pytest_cache/ \
 		   pytest.log \
 		   .coverage \
-		   coverage \
 	       htmlcov/ \
 	       .tox
-.PHONY: clean
+
+# Use `poetry version <major>/<minor></patch>` for version bump
+
+release-prod:
+	poetry config pypi-token.pypi ${PYPI_TOKEN}
+	poetry publish -n
+
+release-test:
+	poetry config repositories.testpypi https://test.pypi.org/legacy
+	poetry config pypi-token.pypi ${PYPI_TEST_TOKEN}
+	poetry publish --repository testpypi -n
+
+release: pr
+	poetry build
+#	$(MAKE) release-test
+#	$(MAKE) release-prod
+
+changelog:
+	 @echo "[+] Pre-generating CHANGELOG for tag: $$(git describe --abbrev=0 --tag)"
+	 docker run -v ${PWD}:/workdir quay.io/git-chglog/git-chglog $$(git describe --abbrev=0 --tag).. -o TMP_CHANGELOG.md
